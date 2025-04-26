@@ -1,20 +1,17 @@
 package com.codewithmosh.store.controllers;
 
-import com.codewithmosh.store.dtos.CreateProductDto;
 import com.codewithmosh.store.dtos.ProductDto;
-import com.codewithmosh.store.dtos.RequestProductDto;
 import com.codewithmosh.store.entities.Product;
 import com.codewithmosh.store.mappers.ProductMapper;
 import com.codewithmosh.store.repositories.CategoryRepository;
 import com.codewithmosh.store.repositories.ProductRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 
 import java.util.List;
-import java.util.stream.Stream;
 
 @RestController
 @AllArgsConstructor
@@ -47,27 +44,36 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> createProduct(@RequestBody RequestProductDto request){
-        CreateProductDto toDto = productMapper.toDto(request);
+    public ResponseEntity<ProductDto> createProduct(
+            @RequestBody ProductDto request,
+            UriComponentsBuilder uriBuilder ){
         var category = categoryRepository.findById(request.getCategoryId()).orElse(null);
         if(category == null)
-            throw new IllegalArgumentException("Category does not exist");
-        toDto.setCategory(category);
-        Product product = productMapper.create(toDto);
+            return ResponseEntity.badRequest().build();
+        var product = productMapper.toEntity(request);
+        product.setCategory(category);
         productRepository.save(product);
-        return ResponseEntity.ok().build();
+        request.setId(product.getId());
+        var uri = uriBuilder.path("/products/{id}").buildAndExpand(product.getId()).toUri();
+
+        return ResponseEntity.created(uri).body(request);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateProduct(
+    public ResponseEntity<ProductDto> updateProduct(
             @PathVariable(name = "id") Long id,
             @RequestBody ProductDto request){
         var product  = productRepository.findById(id).orElse(null);
         if(product == null)
             return ResponseEntity.notFound().build();
+        var category  = categoryRepository.findById(request.getCategoryId()).orElse(null);
+        if(category == null)
+            return ResponseEntity.badRequest().build();
+        product.setCategory(category);
         productMapper.update(request,product);
         productRepository.save(product);
-        return ResponseEntity.noContent().build();
+
+        return ResponseEntity.ok(productMapper.toDto(product));
     }
 
     @DeleteMapping("/{id}")
