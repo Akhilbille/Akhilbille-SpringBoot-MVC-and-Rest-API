@@ -4,16 +4,16 @@ import com.codewithmosh.store.dtos.RegisterUserRequest;
 import com.codewithmosh.store.dtos.UpdatePasswordDto;
 import com.codewithmosh.store.dtos.UpdateUserRequest;
 import com.codewithmosh.store.dtos.UserDto;
-import com.codewithmosh.store.entities.User;
 import com.codewithmosh.store.mappers.UserMapper;
 import com.codewithmosh.store.repositories.UserRepository;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @AllArgsConstructor
@@ -60,10 +60,14 @@ public class UserController {
 
     //Creating resource
     @PostMapping
-    public ResponseEntity<UserDto> createUser(@RequestBody RegisterUserRequest request){
-        var user = userMapper.toEntity(request);
+    public ResponseEntity<?> registerUser(
+            @Valid @RequestBody RegisterUserRequest request
+    ){
         if(userRepository.findByEmail(request.getEmail())!=null)
-            throw new IllegalArgumentException("Email Already Exists..");
+            return  ResponseEntity.badRequest().body(
+                    Map.of("Email","Email is already exists")
+            );
+        var user = userMapper.toEntity(request);
         userRepository.save(user);
         return new ResponseEntity<UserDto>(userMapper.toDto(user), HttpStatus.CREATED);
     }
@@ -108,5 +112,6 @@ public class UserController {
         userRepository.save(user);
         return ResponseEntity.noContent().build();
     }
-    
+
+
 }
